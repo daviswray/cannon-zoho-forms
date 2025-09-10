@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 
 const formSchema = z.object({
@@ -189,20 +191,23 @@ export default function FormWidget({ onSubmit, className = "" }: FormWidgetProps
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Listing Type</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} data-testid="select-listing-type">
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select listing type" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {listingOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      value={field.value}
+                      className="flex space-x-6"
+                      data-testid="radio-listing-type"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="listing" id="listing" />
+                        <Label htmlFor="listing">Listing</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="lease" id="lease" />
+                        <Label htmlFor="lease">Lease</Label>
+                      </div>
+                    </RadioGroup>
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
