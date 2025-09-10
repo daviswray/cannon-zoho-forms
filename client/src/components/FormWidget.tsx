@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
+import { apiRequest } from "@/lib/queryClient"
 
 const formSchema = z.object({
   agentSelect: z.string().min(1, "Please select an agent"),
@@ -48,6 +49,10 @@ export default function FormWidget({ onSubmit, className = "" }: FormWidgetProps
     console.log("Form submitted with data:", data)
     
     try {
+      // Submit form data to backend API
+      const result = await apiRequest("POST", "/api/transaction-forms", data)
+      
+      // Call the optional onSubmit callback if provided
       if (onSubmit) {
         await onSubmit(data)
       }
@@ -59,7 +64,9 @@ export default function FormWidget({ onSubmit, className = "" }: FormWidgetProps
       
       // Reset form after successful submission
       form.reset()
+      console.log("Form submitted successfully:", result)
     } catch (error) {
+      console.error("Form submission error:", error)
       toast({
         title: "Submission Error",
         description: "There was an error submitting the form. Please try again.",
