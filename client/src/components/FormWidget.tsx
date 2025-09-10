@@ -7,8 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { Label } from "@/components/ui/label"
 import { useToast } from "@/hooks/use-toast"
 
 const formSchema = z.object({
@@ -142,23 +140,17 @@ export default function FormWidget({ onSubmit, className = "" }: FormWidgetProps
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Buyer or Seller</FormLabel>
-                  <FormControl>
-                    <RadioGroup
-                      onValueChange={field.onChange}
-                      value={field.value}
-                      className="flex space-x-6"
-                      data-testid="radio-buyer-seller"
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="buyer" id="buyer" />
-                        <Label htmlFor="buyer">Buyer</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="seller" id="seller" />
-                        <Label htmlFor="seller">Seller</Label>
-                      </div>
-                    </RadioGroup>
-                  </FormControl>
+                  <Select onValueChange={field.onChange} value={field.value} data-testid="select-buyer-seller">
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select buyer or seller" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="buyer">Buyer</SelectItem>
+                      <SelectItem value="seller">Seller</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
