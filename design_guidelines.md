@@ -1,93 +1,89 @@
 # Form Widget Design Guidelines
 
 ## Design Approach
-**Reference-Based Approach**: Drawing inspiration from modern productivity tools like Notion and Linear for clean, professional form design that prioritizes usability and efficiency.
+**System-Based Approach**: Utility-focused design using Material Design principles for optimal form usability and data entry efficiency.
+
+## Design Principles
+- **Clarity First**: Clean, uncluttered interface prioritizing form completion
+- **Progressive Disclosure**: Logical field grouping and flow
+- **Accessibility**: High contrast, clear labels, keyboard navigation
+- **Professional Aesthetic**: Business-appropriate styling for real estate transactions
 
 ## Core Design Elements
 
-### A. Color Palette
+### Color Palette
 **Light Mode:**
-- Primary: 220 100% 50% (professional blue)
-- Background: 0 0% 98% (near white)
-- Surface: 0 0% 100% (pure white)
-- Text: 220 20% 15% (dark blue-gray)
-- Border: 220 15% 90% (light gray)
+- Primary: 219 70% 50% (Professional blue)
+- Surface: 0 0% 98% (Clean white background)
+- Border: 220 13% 91% (Subtle gray borders)
+- Text Primary: 220 9% 15% (Dark charcoal)
+- Text Secondary: 220 9% 46% (Medium gray)
 
 **Dark Mode:**
-- Primary: 220 85% 65% (lighter blue)
-- Background: 220 25% 8% (dark blue-gray)
-- Surface: 220 20% 12% (elevated dark)
-- Text: 220 15% 85% (light gray)
-- Border: 220 15% 20% (dark border)
+- Primary: 219 70% 60% (Lighter blue for contrast)
+- Surface: 220 13% 8% (Dark background)
+- Border: 220 13% 18% (Dark borders)
+- Text Primary: 220 9% 95% (Light text)
+- Text Secondary: 220 9% 65% (Medium light gray)
 
-### B. Typography
-- **Primary Font**: Inter via Google Fonts
-- **Form Labels**: 14px, medium weight (500)
+### Typography
+- **Primary Font**: Inter (Google Fonts)
+- **Label Text**: 14px, medium weight (500)
 - **Input Text**: 16px, regular weight (400)
 - **Helper Text**: 12px, regular weight (400)
+- **Section Headers**: 18px, semibold (600)
 
-### C. Layout System
-**Spacing Units**: Tailwind units of 2, 4, 6, and 8
-- Form container: p-6
-- Field spacing: mb-4
-- Input padding: p-3
-- Label margin: mb-2
+### Layout System
+- **Spacing Units**: Tailwind 2, 4, 6, 8 units consistently
+- **Form Width**: Maximum 500px for optimal readability
+- **Field Spacing**: 6 units between form groups
+- **Internal Padding**: 4 units for inputs, 2 units for labels
 
-### D. Component Library
+### Component Library
 
 **Form Container:**
-- Rounded corners (rounded-lg)
-- Subtle shadow for depth
-- Maximum width of 480px
-- Responsive padding
+- Rounded corners (8px radius)
+- Subtle shadow for elevation
+- White/dark background with border
+- Responsive padding (6-8 units)
 
 **Input Fields:**
-- Consistent height (h-12)
-- Rounded borders (rounded-md)
+- Consistent height (48px)
+- Rounded borders (6px radius)
 - Focus states with primary color ring
-- Smooth transitions (transition-colors)
+- Error states with red accent and icon
+
+**Radio Button Groups:**
+- Horizontal layout for Buyer/Seller and Listing Type
+- Clear visual selection states
+- Adequate touch targets (44px minimum)
 
 **Dropdown Selects:**
-- Custom styled select elements
-- Chevron down icons
-- Hover and focus states
-- Generic options: "Option 1", "Option 2", etc.
+- Chevron icons for visual consistency
+- Searchable for Agent and Deal fields (if many options)
+- Hover and focus states matching inputs
 
-**Radio Buttons (Buyer/Seller):**
-- Horizontal layout
-- Custom radio styling
-- Clear visual selection states
-- Adequate touch targets
+**Submit Section:**
+- Primary action button (full width on mobile)
+- Clear success/error messaging
+- Loading states for form submission
 
-**Submit Button:**
-- Primary color background
-- White text
-- Hover state with slightly darker shade
-- Full width on mobile, auto width on desktop
-
-**Validation States:**
-- Error states with red accent (0 65% 55%)
-- Success states with green accent (142 70% 45%)
-- Inline error messages below fields
-
-### E. Interaction Design
-- **No animations** to maintain professional focus
-- Immediate visual feedback on form interactions
-- Clear focus indicators for accessibility
-- Smooth color transitions (150ms duration)
-
-## Form Structure
-1. **Agent Select** - Dropdown with placeholder "Select an agent"
-2. **Client Name** - Text input with validation
-3. **Buyer or Seller** - Radio button group
-4. **Transaction Type** - Dropdown with generic options
-5. **Listing Type** - Dropdown with generic options
-6. **Submit Button** - Primary action button
+## Form Organization
+1. **Agent Information** (Agent Select)
+2. **Client Details** (Client Name)
+3. **Transaction Details** (Buyer/Seller, Transaction Type)
+4. **Listing Information** (Listing Type, Deal)
+5. **Submit Actions**
 
 ## Responsive Behavior
-- Single column layout on all screen sizes
-- Maintain consistent spacing and proportions
-- Touch-friendly targets (minimum 44px height)
-- Proper form field focus management
+- **Mobile**: Single column, full-width inputs
+- **Tablet/Desktop**: Maintain max-width container, two-column layout for radio groups
+- Touch-friendly sizing on all devices
 
-This design prioritizes professional appearance, accessibility, and ease of use while maintaining flexibility for content customization.
+## Validation & Feedback
+- Inline validation with clear error messages
+- Success indicators for completed sections
+- Required field indicators (asterisks or visual cues)
+- Form-level validation summary
+
+This design creates a professional, efficient form experience optimized for real estate transaction data entry while maintaining excellent usability across devices.

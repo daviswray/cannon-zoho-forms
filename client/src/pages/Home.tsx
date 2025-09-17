@@ -1,24 +1,38 @@
-import FormWidget from "@/components/FormWidget"
+import TransactionForm from '@/components/TransactionForm';
+import { type TransactionForm as TransactionFormType } from '@shared/schema';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
-  const handleFormSubmit = (data: any) => {
-    console.log("Transaction form data:", data)
-    // TODO: Send data to backend API when implemented
-  }
+  const { toast } = useToast();
+
+  const handleFormSubmit = (data: TransactionFormType) => {
+    console.log('Transaction form submitted:', data);
+    
+    // Show success toast
+    toast({
+      title: "Transaction Submitted",
+      description: `Transaction for ${data.clientName} has been successfully submitted.`,
+    });
+
+    // In a real application, this would send data to the server
+    // Example: await apiRequest('/api/transactions', { method: 'POST', body: data });
+  };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-lg">
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto py-8 px-4">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-semibold text-foreground mb-2">
-            Real Estate Transaction
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            Real Estate Transaction Management
           </h1>
-          <p className="text-muted-foreground">
-            Complete the form below to process your transaction
-          </p>
         </div>
-        <FormWidget onSubmit={handleFormSubmit} />
+        
+        <TransactionForm onSubmit={handleFormSubmit} />
+        
+        <div className="text-center mt-8 text-sm text-muted-foreground">
+          <p>All fields are required to complete the transaction processing.</p>
+        </div>
       </div>
     </div>
-  )
+  );
 }

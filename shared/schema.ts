@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -17,20 +17,66 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
-export const transactionForms = pgTable("transaction_forms", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  agentSelect: text("agent_select").notNull(),
-  clientName: text("client_name").notNull(),
-  buyerOrSeller: text("buyer_or_seller").notNull(),
-  transactionType: text("transaction_type").notNull(),
-  listingType: text("listing_type").notNull(),
-  createdAt: timestamp("created_at").default(sql`now()`).notNull(),
+// API Response Types
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+
+// Transaction Form Schema with conditional validation
+export const transactionFormSchema = z.object({
+  agentId: z.string().min(1, "Please select an agent"),
+  clientName: z.string().min(2, "Client name must be at least 2 characters").max(100, "Client name is too long"),
+  buyerOrSeller: z.enum(["buyer", "seller"], {
+    required_error: "Please select buyer or seller",
+  }),
+  transactionType: z.enum(["bba", "la", "uc"], {
+    required_error: "Please select a transaction type",
+  }),
+  listingType: z.enum(["listing", "lease"]).optional(),
+  fubDealId: z.string().min(1, "Please select a FUB deal"),
+}).superRefine((data, ctx) => {
+  // Validate buyer/seller + transaction type combinations
+  if (data.buyerOrSeller === 'buyer' && !['bba', 'uc'].includes(data.transactionType)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['transactionType'],
+      message: 'Buyers can only have BBA or UC transaction types',
+    });
+  }
+  if (data.buyerOrSeller === 'seller' && !['la', 'uc'].includes(data.transactionType)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['transactionType'],
+      message: 'Sellers can only have LA or UC transaction types',
+    });
+  }
+  
+  // Listing type is required only for sellers with listing agreements
+  if (data.buyerOrSeller === 'seller' && data.transactionType === 'la' && !data.listingType) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['listingType'],
+      message: 'Listing type is required for listing agreements',
+    });
+  }
 });
 
-export const insertTransactionFormSchema = createInsertSchema(transactionForms).omit({
-  id: true,
-  createdAt: true,
-});
+export type TransactionForm = z.infer<typeof transactionFormSchema>;
 
-export type InsertTransactionForm = z.infer<typeof insertTransactionFormSchema>;
-export type TransactionForm = typeof transactionForms.$inferSelect;
+// FUB API Types
+export interface FubAgent {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email?: string;
+}
+
+export interface FubDeal {
+  id: number;
+  name: string;
+  stage?: string;
+  status?: string;
+  type?: string;
+}
