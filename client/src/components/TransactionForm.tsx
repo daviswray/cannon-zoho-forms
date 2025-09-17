@@ -140,11 +140,11 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
   const handleCreateNew = () => {
     // Open appropriate Zoho form based on transaction type
     const ZOHO_FORM_URLS = {
-      'buyer-bba': import.meta.env.VITE_ZOHO_BUYER_BBA_FORM_URL || 'https://forms.zohopublic.com/buyer-bba-form',
-      'buyer-uc': import.meta.env.VITE_ZOHO_BUYER_UC_FORM_URL || 'https://forms.zohopublic.com/buyer-uc-form',
-      'seller-la': import.meta.env.VITE_ZOHO_SELLER_LA_FORM_URL || 'https://forms.zohopublic.com/seller-la-form',
-      'seller-uc': import.meta.env.VITE_ZOHO_SELLER_UC_FORM_URL || 'https://forms.zohopublic.com/seller-uc-form',
-      'default': import.meta.env.VITE_ZOHO_DEFAULT_FORM_URL || 'https://forms.zohopublic.com/general-form'
+      'buyer-bba': 'https://forms.zohopublic.com/buyer-bba-form',
+      'buyer-uc': 'https://forms.zohopublic.com/buyer-uc-form',
+      'seller-la': 'https://forms.zohopublic.com/seller-la-form',
+      'seller-uc': 'https://forms.zohopublic.com/seller-uc-form',
+      'default': 'https://forms.zohopublic.com/general-form'
     };
     
     const formType = `${buyerOrSeller || 'default'}-${transactionType || ''}` as keyof typeof ZOHO_FORM_URLS;
