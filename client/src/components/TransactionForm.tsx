@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { transactionFormSchema, type TransactionForm, type FubAgent, type FubDeal, type ApiResponse } from "@shared/schema";
@@ -140,16 +141,15 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
   const handleCreateNew = () => {
     // Open appropriate Zoho form based on transaction type
     const ZOHO_FORM_URLS = {
-      'buyer-bba': 'https://forms.zohopublic.com/buyer-bba-form',
-      'buyer-uc': 'https://forms.zohopublic.com/buyer-uc-form',
-      'seller-la': 'https://forms.zohopublic.com/seller-la-form',
-      'seller-uc': 'https://forms.zohopublic.com/seller-uc-form',
-      'default': 'https://forms.zohopublic.com/general-form'
+      'buyer-bba': import.meta.env.VITE_ZOHO_BUYER_BBA_FORM_URL || 'https://forms.zohopublic.com/CannonTeam/form/NewBBASubmission/formperma/Qm2AwO4xY7RPOIJ0Of_9k3gcV-dzHu32C7Vn3w5OH9g',
+      'buyer-uc': import.meta.env.VITE_ZOHO_BUYER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewContract/formperma/9lTM0a8kzmi4iy6zuFQUVfhT0lfqnnOlbLH05fn_x1E',
+      'seller-la': import.meta.env.VITE_ZOHO_SELLER_LA_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewListing/formperma/78JeD2bofmAdny2Oa57i0fpLQNhVmTkpOyop0eBp0ck',
+      'seller-uc': import.meta.env.VITE_ZOHO_SELLER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewLease/formperma/N9yiE4OPoXlb3WkOetjQdSPPdU7YTQMUbtZcaqTP0TU',
+      'default': import.meta.env.VITE_ZOHO_DEFAULT_FORM_URL || 'https://forms.zohopublic.com/general-form'
     };
-    
+
     const formType = `${buyerOrSeller || 'default'}-${transactionType || ''}` as keyof typeof ZOHO_FORM_URLS;
     const zohoUrl = ZOHO_FORM_URLS[formType] || ZOHO_FORM_URLS.default;
-    
     window.open(zohoUrl, '_blank');
   };
 
