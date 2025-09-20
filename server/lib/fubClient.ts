@@ -80,8 +80,9 @@ export class FubClient {
   async getDeals(filters: {
     buyerOrSeller?: 'buyer' | 'seller';
     transactionType?: 'bba' | 'la' | 'uc';
+    agentId?: number;
   } = {}): Promise<FubDeal[]> {
-    const response = await fetch(`${this.config.baseUrl}/deals`, {
+    const response = await fetch(`${this.config.baseUrl}/deals/?userId=${filters.agentId}`, {
       method: 'GET',
       headers: this.getHeaders()
     });
@@ -92,6 +93,7 @@ export class FubClient {
 
     const data = await response.json();
     let deals = data.deals || [];
+    return deals;
     
     // Client-side filtering based on conditional logic
     if (filters.buyerOrSeller && filters.transactionType) {

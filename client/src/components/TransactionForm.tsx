@@ -39,8 +39,8 @@ async function fetchAgents(): Promise<FubAgent[]> {
   return result.data || [];
 }
 
-async function fetchDeals(buyerOrSeller: string, transactionType: string): Promise<FubDeal[]> {
-  const response = await fetch(`/api/deals?buyerOrSeller=${buyerOrSeller}&transactionType=${transactionType}`);
+async function fetchDeals(buyerOrSeller: string, transactionType: string, agentId?: number): Promise<FubDeal[]> {
+  const response = await fetch(`/api/deals?buyerOrSeller=${buyerOrSeller}&transactionType=${transactionType}&agentId=${agentId || ''}`);
   const result: ApiResponse<FubDeal[]> = await response.json();
   if (!result.success) {
     throw new Error(result.error || 'Failed to fetch deals');
@@ -101,7 +101,7 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
   // Fetch deals based on conditions
   const { data: deals = [], isLoading: dealsLoading, error: dealsError } = useQuery({
     queryKey: ['deals', buyerOrSeller, transactionType],
-    queryFn: () => fetchDeals(buyerOrSeller!, transactionType!),
+    queryFn: () => fetchDeals(buyerOrSeller!, transactionType!, agents.find(a => a.id.toString() === form.getValues('agentId'))?.id),
     enabled: !!(buyerOrSeller && transactionType && isValidCombination(buyerOrSeller, transactionType)),
   });
 
@@ -133,13 +133,7 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
     },
   });
 
-  const handleSubmit = (data: TransactionForm) => {
-    console.log("Form submitted:", data);
-    submitMutation.mutate(data);
-  };
-
-  const handleCreateNew = () => {
-    // Open appropriate Zoho form based on transaction type
+  const handleSubmit = async (data: TransactionForm) => {
     const ZOHO_FORM_URLS = {
       'buyer-bba': import.meta.env.VITE_ZOHO_BUYER_BBA_FORM_URL || 'https://forms.zohopublic.com/CannonTeam/form/NewBBASubmission/formperma/Qm2AwO4xY7RPOIJ0Of_9k3gcV-dzHu32C7Vn3w5OH9g',
       'buyer-uc': import.meta.env.VITE_ZOHO_BUYER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewContract/formperma/9lTM0a8kzmi4iy6zuFQUVfhT0lfqnnOlbLH05fn_x1E',
@@ -150,6 +144,43 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
 
     const formType = `${buyerOrSeller || 'default'}-${transactionType || ''}` as keyof typeof ZOHO_FORM_URLS;
     const zohoUrl = ZOHO_FORM_URLS[formType] || ZOHO_FORM_URLS.default;
+
+    await fetch("/api/zapier-proxy", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "link": zohoUrl,
+      },
+      body: JSON.stringify(data),
+    });
+    console.log("Form submitted:", data);
+    submitMutation.mutate(data);
+  };
+
+  const handleCreateNew = () => {
+    // Open appropriate Zoho form based on transaction type
+    const selectedAgent = agents.find(a => a.id.toString() === form.getValues('agentId'));
+    const agentFirst = selectedAgent ? `${selectedAgent.firstName}` : '';
+    const agentLast = selectedAgent ? `${selectedAgent.lastName}` : '';
+    const agentEmail = selectedAgent ? `${selectedAgent.email}` : '';
+    const clientFirst = form.getValues('clientName').split(' ')[0] || '';
+    const clientLast = form.getValues('clientName').split(' ').slice(1).join(' ') || '';
+
+    const ZOHO_FORM_URLS = {
+      //buyer-uc directs to New Contract. Default is also New Contract
+
+      'buyer-bba': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string) => `${import.meta.env.VITE_ZOHO_BUYER_BBA_FORM_URL || 'https://forms.zohopublic.com/CannonTeam/form/NewBBASubmission/formperma/Qm2AwO4xY7RPOIJ0Of_9k3gcV-dzHu32C7Vn3w5OH9g'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}`,
+      'buyer-uc': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string) => `${import.meta.env.VITE_ZOHO_BUYER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewContract/formperma/9lTM0a8kzmi4iy6zuFQUVfhT0lfqnnOlbLH05fn_x1E'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}&Email=${encodeURIComponent(agentEmail)}`,
+      'seller-la': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string) => `${import.meta.env.VITE_ZOHO_SELLER_LA_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewListing/formperma/78JeD2bofmAdny2Oa57i0fpLQNhVmTkpOyop0eBp0ck'}?Name2_First=${encodeURIComponent(agentFirst)}&Name2_Last=${encodeURIComponent(agentLast)}&Name3_First=${encodeURIComponent(clientFirst)}&Name3_Last=${encodeURIComponent(clientLast)}`,
+      'seller-uc': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string) => `${import.meta.env.VITE_ZOHO_SELLER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewLease/formperma/N9yiE4OPoXlb3WkOetjQdSPPdU7YTQMUbtZcaqTP0TU'}?Name2_First=${encodeURIComponent(agentFirst)}&Name2_Last=${encodeURIComponent(agentLast)}&Name3_First=${encodeURIComponent(clientFirst)}&Name3_Last=${encodeURIComponent(clientLast)}`,
+      'default': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string) => `${import.meta.env.VITE_ZOHO_BUYER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewContract/formperma/9lTM0a8kzmi4iy6zuFQUVfhT0lfqnnOlbLH05fn_x1E'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}&Email=${encodeURIComponent(agentEmail)}`
+    };
+
+
+
+    const formType = `${buyerOrSeller || 'default'}-${transactionType || ''}` as keyof typeof ZOHO_FORM_URLS;
+    const zohoUrlFn = ZOHO_FORM_URLS[formType] || ZOHO_FORM_URLS.default;
+    const zohoUrl = zohoUrlFn(agentFirst, agentLast, clientFirst, clientLast, agentEmail);
     window.open(zohoUrl, '_blank');
   };
 

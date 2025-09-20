@@ -35,7 +35,7 @@ export const transactionFormSchema = z.object({
     required_error: "Please select a transaction type",
   }),
   listingType: z.enum(["listing", "lease"]).optional(),
-  fubDealId: z.string().min(1, "Please select a FUB deal"),
+  fubDealId: z.string().optional(),
 }).superRefine((data, ctx) => {
   // Validate buyer/seller + transaction type combinations
   if (data.buyerOrSeller === 'buyer' && !['bba', 'uc'].includes(data.transactionType)) {
