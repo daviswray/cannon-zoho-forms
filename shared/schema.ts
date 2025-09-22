@@ -71,6 +71,7 @@ export interface FubAgent {
   firstName: string;
   lastName: string;
   email?: string;
+  phone?: string;
 }
 
 export interface FubDeal {
@@ -79,4 +80,13 @@ export interface FubDeal {
   stage?: string;
   status?: string;
   type?: string;
+}
+
+export interface FubPerson {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  type?: string;
+  phone?: string;
 }

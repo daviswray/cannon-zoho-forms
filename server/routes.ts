@@ -21,6 +21,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get FUB lead by personId (path parameter version - NEW)
+  app.get('/api/lead/:personId', async (req, res) => {
+    try {
+      const personId = parseInt(req.params.personId, 10);
+      if (isNaN(personId)) {
+        return res.status(400).json({ success: false, error: 'Invalid personId' });
+      }
+      
+      const lead = await fubClient.getLeads(personId);
+      res.json({ success: true, data: lead });
+    } catch (error) {
+      console.error('Error fetching lead:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to fetch lead from Follow-up Boss'
+      });
+    }
+  });
+
   // Get FUB deals based on conditions
   app.get('/api/deals', async (req, res) => {
     try {
@@ -65,6 +84,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Submit transaction form
   app.post('/api/transactions', async (req, res) => {
     try {
+      console.log('Received transaction submission:', req.body);
+      // Validate input 
       const validatedData = transactionFormSchema.parse(req.body);
       
       // Create event in FUB
@@ -83,15 +104,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       };
 
-      const fubEvent = await fubClient.createEvent(eventData);
+      //const fubEvent = await fubClient.createEvent(eventData);
       
       // Also add a note to the specific deal
       try {
-        await fubClient.addDealNote(
-          validatedData.fubDealId,
-          `Transaction form submitted for ${validatedData.clientName}. Type: ${validatedData.buyerOrSeller}, Transaction: ${validatedData.transactionType}, Listing: ${validatedData.listingType}`,
-          validatedData.agentId
-        );
+        await fubClient.submitTransaction({
+          eventData
+        });
       } catch (noteError) {
         console.warn('Failed to add deal note:', noteError);
         // Don't fail the entire transaction if note creation fails
@@ -100,7 +119,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         success: true, 
         data: { 
-          transactionId: fubEvent.id,
+          //transactionId: fubEvent.id,
           message: 'Transaction submitted successfully'
         }
       });

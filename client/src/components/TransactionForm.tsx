@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { transactionFormSchema, type TransactionForm, type FubAgent, type FubDeal, type ApiResponse } from "@shared/schema";
+import { transactionFormSchema, type TransactionForm, type FubAgent, type FubPerson, type FubDeal, type ApiResponse } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,6 +39,19 @@ async function fetchAgents(): Promise<FubAgent[]> {
   return result.data || [];
 }
 
+async function fetchLead(personId: number): Promise<FubPerson> {
+  // Use path parameter instead of query parameter
+  const response = await fetch(`/api/lead/${personId}`);
+  const result: ApiResponse<FubPerson> = await response.json();
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to fetch leads');
+  }
+  if (!result.data) {
+    throw new Error('Lead not found');
+  }
+  return result.data;
+}
+
 async function fetchDeals(buyerOrSeller: string, transactionType: string, agentId?: number): Promise<FubDeal[]> {
   const response = await fetch(`/api/deals?buyerOrSeller=${buyerOrSeller}&transactionType=${transactionType}&agentId=${agentId || ''}`);
   const result: ApiResponse<FubDeal[]> = await response.json();
@@ -64,6 +77,17 @@ async function submitTransaction(data: TransactionForm) {
 }
 
 export default function TransactionForm({ onSubmit }: TransactionFormProps) {
+  // Extract personId from URL search parameters
+  const [personId, setPersonId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const personIdParam = urlParams.get('personId');
+    if (personIdParam) {
+      setPersonId(personIdParam);
+    }
+  }, []);
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [shouldFetchDeals, setShouldFetchDeals] = useState(false);
@@ -71,10 +95,10 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
   const form = useForm<TransactionForm>({
     resolver: zodResolver(transactionFormSchema),
     defaultValues: {
-      agentId: "",
+      agentId: "", // Make sure this isn't undefined
       clientName: "",
-      buyerOrSeller: undefined,
-      transactionType: undefined,
+      buyerOrSeller: undefined, // Consider using a default value
+      transactionType: undefined, // Consider using a default value
       listingType: undefined,
       fubDealId: "",
     },
@@ -98,6 +122,20 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
     queryFn: fetchAgents,
   });
 
+  // Fetch lead based on URL path parameter
+  const { data: leadData, isLoading: leadLoading } = useQuery({
+    queryKey: ['lead', personId],
+    queryFn: () => fetchLead(Number(personId)),
+    enabled: !!personId && !isNaN(Number(personId)),
+  });
+
+  // Auto-populate form when lead data is available
+  useEffect(() => {
+    if (leadData) {
+      form.setValue('clientName', `${leadData.firstName} ${leadData.lastName}`);
+    }
+  }, [leadData, form]);
+
   // Fetch deals based on conditions
   const { data: deals = [], isLoading: dealsLoading, error: dealsError } = useQuery({
     queryKey: ['deals', buyerOrSeller, transactionType],
@@ -113,7 +151,23 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
   }, [buyerOrSeller, transactionType, form]);
 
   const submitMutation = useMutation({
-    mutationFn: submitTransaction,
+    mutationFn: async (data: TransactionForm) => {
+      // Submit to both endpoints sequentially
+      console.log("Submitting data:", data);
+      
+      // Validate one more time before submission
+      const validationResult = transactionFormSchema.safeParse(data);
+      console.log("Validation result:", validationResult);
+
+      if (!validationResult.success) {
+        throw new Error("Validation failed: " + validationResult.error.message);
+      }
+      
+      
+      
+      // Send to main API
+      return await submitTransaction(data);
+    },
     onSuccess: (data) => {
       toast({
         title: "Transaction Submitted",
@@ -125,6 +179,7 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
       }
     },
     onError: (error) => {
+      console.error("Submission error:", error);
       toast({
         title: "Submission Failed",
         description: error.message || "Failed to submit transaction",
@@ -134,26 +189,19 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
   });
 
   const handleSubmit = async (data: TransactionForm) => {
-    const ZOHO_FORM_URLS = {
-      'buyer-bba': import.meta.env.VITE_ZOHO_BUYER_BBA_FORM_URL || 'https://forms.zohopublic.com/CannonTeam/form/NewBBASubmission/formperma/Qm2AwO4xY7RPOIJ0Of_9k3gcV-dzHu32C7Vn3w5OH9g',
-      'buyer-uc': import.meta.env.VITE_ZOHO_BUYER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewContract/formperma/9lTM0a8kzmi4iy6zuFQUVfhT0lfqnnOlbLH05fn_x1E',
-      'seller-la': import.meta.env.VITE_ZOHO_SELLER_LA_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewListing/formperma/78JeD2bofmAdny2Oa57i0fpLQNhVmTkpOyop0eBp0ck',
-      'seller-uc': import.meta.env.VITE_ZOHO_SELLER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewLease/formperma/N9yiE4OPoXlb3WkOetjQdSPPdU7YTQMUbtZcaqTP0TU',
-      'default': import.meta.env.VITE_ZOHO_DEFAULT_FORM_URL || 'https://forms.zohopublic.com/general-form'
-    };
+    console.log("Form data received:", data);
+    console.log("Form values from getValues:", form.getValues());
+    
+    // Basic validation
+    if (!data.agentId || !data.clientName || !data.buyerOrSeller || !data.transactionType) {
+      toast({
+        title: "Missing Required Fields",
+        description: "Please fill out all required fields before submitting.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const formType = `${buyerOrSeller || 'default'}-${transactionType || ''}` as keyof typeof ZOHO_FORM_URLS;
-    const zohoUrl = ZOHO_FORM_URLS[formType] || ZOHO_FORM_URLS.default;
-
-    await fetch("/api/zapier-proxy", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "link": zohoUrl,
-      },
-      body: JSON.stringify(data),
-    });
-    console.log("Form submitted:", data);
     submitMutation.mutate(data);
   };
 
@@ -165,22 +213,27 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
     const agentEmail = selectedAgent ? `${selectedAgent.email}` : '';
     const clientFirst = form.getValues('clientName').split(' ')[0] || '';
     const clientLast = form.getValues('clientName').split(' ').slice(1).join(' ') || '';
+    const clientEmail = leadData?.email || '';
+    const clientPhone = leadData?.phone || '';
 
     const ZOHO_FORM_URLS = {
       //buyer-uc directs to New Contract. Default is also New Contract
 
-      'buyer-bba': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string) => `${import.meta.env.VITE_ZOHO_BUYER_BBA_FORM_URL || 'https://forms.zohopublic.com/CannonTeam/form/NewBBASubmission/formperma/Qm2AwO4xY7RPOIJ0Of_9k3gcV-dzHu32C7Vn3w5OH9g'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}`,
-      'buyer-uc': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string) => `${import.meta.env.VITE_ZOHO_BUYER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewContract/formperma/9lTM0a8kzmi4iy6zuFQUVfhT0lfqnnOlbLH05fn_x1E'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}&Email=${encodeURIComponent(agentEmail)}`,
-      'seller-la': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string) => `${import.meta.env.VITE_ZOHO_SELLER_LA_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewListing/formperma/78JeD2bofmAdny2Oa57i0fpLQNhVmTkpOyop0eBp0ck'}?Name2_First=${encodeURIComponent(agentFirst)}&Name2_Last=${encodeURIComponent(agentLast)}&Name3_First=${encodeURIComponent(clientFirst)}&Name3_Last=${encodeURIComponent(clientLast)}`,
-      'seller-uc': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string) => `${import.meta.env.VITE_ZOHO_SELLER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewLease/formperma/N9yiE4OPoXlb3WkOetjQdSPPdU7YTQMUbtZcaqTP0TU'}?Name2_First=${encodeURIComponent(agentFirst)}&Name2_Last=${encodeURIComponent(agentLast)}&Name3_First=${encodeURIComponent(clientFirst)}&Name3_Last=${encodeURIComponent(clientLast)}`,
-      'default': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string) => `${import.meta.env.VITE_ZOHO_BUYER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewContract/formperma/9lTM0a8kzmi4iy6zuFQUVfhT0lfqnnOlbLH05fn_x1E'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}&Email=${encodeURIComponent(agentEmail)}`
+    'buyer-bba': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string, clientEmail: string, clientPhone: string) => `${import.meta.env.VITE_ZOHO_BUYER_BBA_FORM_URL || 'https://forms.zohopublic.com/CannonTeam/form/NewBBASubmission/formperma/Qm2AwO4xY7RPOIJ0Of_9k3gcV-dzHu32C7Vn3w5OH9g'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}&Email2=${encodeURIComponent(agentEmail)}&Email=${encodeURIComponent(clientEmail)}&PhoneNumber=${encodeURIComponent(clientPhone)}`,
+      
+    'buyer-uc': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string) => `${import.meta.env.VITE_ZOHO_BUYER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewContract/formperma/9lTM0a8kzmi4iy6zuFQUVfhT0lfqnnOlbLH05fn_x1E'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}&Email=${encodeURIComponent(agentEmail)}&Email1=${encodeURIComponent(clientEmail)}&PhoneNumber=${encodeURIComponent(clientPhone)}`,
+
+    'seller-la': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string) => `${import.meta.env.VITE_ZOHO_SELLER_LA_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewListing/formperma/78JeD2bofmAdny2Oa57i0fpLQNhVmTkpOyop0eBp0ck'}?Name2_First=${encodeURIComponent(agentFirst)}&Name2_Last=${encodeURIComponent(agentLast)}&Name_First=${encodeURIComponent(clientFirst)}&Name_Last=${encodeURIComponent(clientLast)}&Email2=${encodeURIComponent(agentEmail)}&Email=${encodeURIComponent(clientEmail)}&PhoneNumber1=${encodeURIComponent(clientPhone)}`,
+
+    'seller-uc': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string) => `${import.meta.env.VITE_ZOHO_SELLER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewLease/formperma/N9yiE4OPoXlb3WkOetjQdSPPdU7YTQMUbtZcaqTP0TU'}?Name2_First=${encodeURIComponent(agentFirst)}&Name2_Last=${encodeURIComponent(agentLast)}&Name_First=${encodeURIComponent(clientFirst)}&Name_Last=${encodeURIComponent(clientLast)}&Email2=${encodeURIComponent(agentEmail)}&Email=${encodeURIComponent(clientEmail)}&PhoneNumber1=${encodeURIComponent(clientPhone)}`,
+      //'default': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string) => `${import.meta.env.VITE_ZOHO_BUYER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewContract/formperma/9lTM0a8kzmi4iy6zuFQUVfhT0lfqnnOlbLH05fn_x1E'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}&Email=${encodeURIComponent(agentEmail)}`
     };
 
 
 
     const formType = `${buyerOrSeller || 'default'}-${transactionType || ''}` as keyof typeof ZOHO_FORM_URLS;
-    const zohoUrlFn = ZOHO_FORM_URLS[formType] || ZOHO_FORM_URLS.default;
-    const zohoUrl = zohoUrlFn(agentFirst, agentLast, clientFirst, clientLast, agentEmail);
+    const zohoUrlFn = ZOHO_FORM_URLS[formType] ;//|| ZOHO_FORM_URLS.default
+    const zohoUrl = zohoUrlFn(agentFirst, agentLast, clientFirst, clientLast, agentEmail, clientEmail, clientPhone);
     window.open(zohoUrl, '_blank');
   };
 
@@ -273,17 +326,19 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
               control={form.control}
               name="clientName"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Client Name</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Enter client's full name"
-                      data-testid="input-client-name"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+              <FormItem>
+                <FormLabel>Client Name</FormLabel>
+                <FormControl>
+                <Input
+                  placeholder="Enter client's full name"
+                  data-testid="input-client-name"
+                  {...field}
+                  value={field.value || (leadData ? `${leadData.firstName} ${leadData.lastName}` : "")}
+                  onChange={field.onChange}
+                />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
               )}
             />
 
@@ -454,7 +509,7 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
                     Submitting...
                   </>
                 ) : (
-                  transactionType ? `Submit (${getFormTypeDisplay()})` : "Submit"
+                  transactionType ? `Submit ${getFormTypeDisplay()}` : "Submit"
                 )}
               </Button>
               

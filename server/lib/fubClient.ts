@@ -77,6 +77,28 @@ export class FubClient {
     }));
   }
 
+  async getLeads(personId: number): Promise<FubPerson> {
+    const response = await fetch(`${this.config.baseUrl}/people/${personId}`, {
+      method: 'GET',
+      headers: this.getHeaders()
+    });
+
+    if (!response.ok) {
+      throw new Error(`FUB API error: ${response.status} ${response.statusText}`);
+    }
+    
+    const data = await response.json();
+    const lead: FubPerson = {
+      id: data.id,
+      firstName: data.firstName || (data.name ? data.name.split(' ')[0] : ''),
+      lastName: data.lastName || (data.name ? data.name.split(' ').slice(1).join(' ') : ''),
+      email: data.emails[0]?.value,
+      phone: data.phones[0]?.value,
+      type: data.stage
+    };
+    return lead;
+  }
+
   async getDeals(filters: {
     buyerOrSeller?: 'buyer' | 'seller';
     transactionType?: 'bba' | 'la' | 'uc';
@@ -101,6 +123,22 @@ export class FubClient {
     }
     
     return deals;
+  }
+
+  async submitTransaction(data: Record<string, any>) {
+    const response = await fetch(`https://hooks.zapier.com/hooks/catch/2829529/um7w3k8/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+
+    if (!response.ok) {
+      throw new Error(`Zapier webhook error: ${response.status} ${response.statusText}`);
+    }
+
+    return await response.json();
   }
 
   private filterDealsByConditions(
