@@ -188,21 +188,37 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
     },
   });
 
-  const handleSubmit = async (data: TransactionForm) => {
-    console.log("Form data received:", data);
-    console.log("Form values from getValues:", form.getValues());
-    
-    // Basic validation
-    if (!data.agentId || !data.clientName || !data.buyerOrSeller || !data.transactionType) {
-      toast({
-        title: "Missing Required Fields",
-        description: "Please fill out all required fields before submitting.",
-        variant: "destructive",
-      });
-      return;
-    }
+  const handleSubmit = () => {
+    // Open appropriate Zoho form based on transaction type
+    const selectedAgent = agents.find(a => a.id.toString() === form.getValues('agentId'));
+    const agentFirst = selectedAgent ? `${selectedAgent.firstName}` : '';
+    const agentLast = selectedAgent ? `${selectedAgent.lastName}` : '';
+    const agentEmail = selectedAgent ? `${selectedAgent.email}` : '';
+    const clientFirst = form.getValues('clientName').split(' ')[0] || '';
+    const clientLast = form.getValues('clientName').split(' ').slice(1).join(' ') || '';
+    const clientEmail = leadData?.email || '';
+    const clientPhone = leadData?.phone || '';
+    const fubid = deals.find(deal => deal.id.toString() === form.getValues('fubDealId'))?.id.toString() || '';
 
-    submitMutation.mutate(data);
+    const ZOHO_FORM_URLS = {
+      //buyer-uc directs to New Contract. Default is also New Contract
+
+    'buyer-bba': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string, clientEmail: string, clientPhone: string, fubid: string) => `${import.meta.env.VITE_ZOHO_BUYER_BBA_FORM_URL || 'https://forms.zohopublic.com/CannonTeam/form/NewBBASubmission/formperma/Qm2AwO4xY7RPOIJ0Of_9k3gcV-dzHu32C7Vn3w5OH9g'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}&Email2=${encodeURIComponent(agentEmail)}&Email=${encodeURIComponent(clientEmail)}&PhoneNumber=${encodeURIComponent(clientPhone)}&SingleLine=${encodeURIComponent(fubid)}`,
+      
+    'buyer-uc': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string, clientEmail: string, clientPhone: string, fubid: string) => `${import.meta.env.VITE_ZOHO_BUYER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewContract/formperma/9lTM0a8kzmi4iy6zuFQUVfhT0lfqnnOlbLH05fn_x1E'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}&Email=${encodeURIComponent(agentEmail)}&Email1=${encodeURIComponent(clientEmail)}&PhoneNumber=${encodeURIComponent(clientPhone)}&SingleLine=${encodeURIComponent(fubid)}`,
+
+    'seller-la': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string, clientEmail: string, clientPhone: string, fubid: string) => `${import.meta.env.VITE_ZOHO_SELLER_LA_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewListing/formperma/78JeD2bofmAdny2Oa57i0fpLQNhVmTkpOyop0eBp0ck'}?Name2_First=${encodeURIComponent(agentFirst)}&Name2_Last=${encodeURIComponent(agentLast)}&Name_First=${encodeURIComponent(clientFirst)}&Name_Last=${encodeURIComponent(clientLast)}&Email2=${encodeURIComponent(agentEmail)}&Email=${encodeURIComponent(clientEmail)}&PhoneNumber1=${encodeURIComponent(clientPhone)}&SingleLine=${encodeURIComponent(fubid)}`,
+
+    'seller-uc': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string, clientEmail: string, clientPhone: string, fubid: string) => `${import.meta.env.VITE_ZOHO_SELLER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewLease/formperma/N9yiE4OPoXlb3WkOetjQdSPPdU7YTQMUbtZcaqTP0TU'}?Name2_First=${encodeURIComponent(agentFirst)}&Name2_Last=${encodeURIComponent(agentLast)}&Name_First=${encodeURIComponent(clientFirst)}&Name_Last=${encodeURIComponent(clientLast)}&Email2=${encodeURIComponent(agentEmail)}&Email=${encodeURIComponent(clientEmail)}&PhoneNumber1=${encodeURIComponent(clientPhone)}&SingleLine=${encodeURIComponent(fubid)}`,
+      //'default': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string) => `${import.meta.env.VITE_ZOHO_BUYER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewContract/formperma/9lTM0a8kzmi4iy6zuFQUVfhT0lfqnnOlbLH05fn_x1E'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}&Email=${encodeURIComponent(agentEmail)}`
+    };
+
+
+
+    const formType = `${buyerOrSeller || 'default'}-${transactionType || ''}` as keyof typeof ZOHO_FORM_URLS;
+    const zohoUrlFn = ZOHO_FORM_URLS[formType] ;//|| ZOHO_FORM_URLS.default
+    const zohoUrl = zohoUrlFn(agentFirst, agentLast, clientFirst, clientLast, agentEmail, clientEmail, clientPhone, fubid);
+    window.open(zohoUrl, '_blank');
   };
 
   const handleCreateNew = () => {
@@ -215,11 +231,12 @@ export default function TransactionForm({ onSubmit }: TransactionFormProps) {
     const clientLast = form.getValues('clientName').split(' ').slice(1).join(' ') || '';
     const clientEmail = leadData?.email || '';
     const clientPhone = leadData?.phone || '';
+    const fubid = deals.find(deal => deal.id.toString() === form.getValues('fubDealId'))?.id.toString() || '';
 
     const ZOHO_FORM_URLS = {
       //buyer-uc directs to New Contract. Default is also New Contract
 
-    'buyer-bba': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string, clientEmail: string, clientPhone: string) => `${import.meta.env.VITE_ZOHO_BUYER_BBA_FORM_URL || 'https://forms.zohopublic.com/CannonTeam/form/NewBBASubmission/formperma/Qm2AwO4xY7RPOIJ0Of_9k3gcV-dzHu32C7Vn3w5OH9g'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}&Email2=${encodeURIComponent(agentEmail)}&Email=${encodeURIComponent(clientEmail)}&PhoneNumber=${encodeURIComponent(clientPhone)}`,
+    'buyer-bba': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string, clientEmail: string, clientPhone: string) => `${import.meta.env.VITE_ZOHO_BUYER_BBA_FORM_URL || 'https://forms.zohopublic.com/CannonTeam/form/NewBBASubmission/formperma/Qm2AwO4xY7RPOIJ0Of_9k3gcV-dzHu32C7Vn3w5OH9g'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}&Email2=${encodeURIComponent(agentEmail)}&Email=${encodeURIComponent(clientEmail)}&PhoneNumber=${encodeURIComponent(clientPhone)}}`,
       
     'buyer-uc': (agentFirst: string, agentLast: string, clientFirst: string, clientLast: string, agentEmail: string, clientEmail: string, clientPhone: string) => `${import.meta.env.VITE_ZOHO_BUYER_UC_FORM_URL || 'https://secure.cannonteam.com/CannonTeam/form/SubmitANewContract/formperma/9lTM0a8kzmi4iy6zuFQUVfhT0lfqnnOlbLH05fn_x1E'}?Name_First=${encodeURIComponent(agentFirst)}&Name_Last=${encodeURIComponent(agentLast)}&Name1_First=${encodeURIComponent(clientFirst)}&Name1_Last=${encodeURIComponent(clientLast)}&Email=${encodeURIComponent(agentEmail)}&Email1=${encodeURIComponent(clientEmail)}&PhoneNumber=${encodeURIComponent(clientPhone)}`,
 
