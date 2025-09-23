@@ -56,19 +56,33 @@ export class FubClient {
   }
 
   async getAgents(): Promise<FubPerson[]> {
-    const response = await fetch(`${this.config.baseUrl}/users`, {
-      method: 'GET',
-      headers: this.getHeaders()
-    });
+    // Get all agents by implementing pagination
+    let allUsers: any[] = [];
+    let offset = 0;
+    const limit = 100;
+    let hasMore = true;
 
-    if (!response.ok) {
-      throw new Error(`FUB API error: ${response.status} ${response.statusText}`);
+    while (hasMore) {
+      const response = await fetch(`${this.config.baseUrl}/users?limit=${limit}&offset=${offset}`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error(`FUB API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const users = data.users || [];
+      
+      allUsers = allUsers.concat(users);
+      
+      // Check if we got fewer results than the limit, meaning we've reached the end
+      hasMore = users.length === limit;
+      offset += limit;
     }
-
-    const data = await response.json();
-    const users = data.users || [];
     
-    return users.map((user: any) => ({
+    return allUsers.map((user: any) => ({
       id: user.id,
       firstName: user.firstName || (user.name ? user.name.split(' ')[0] : ''),
       lastName: user.lastName || (user.name ? user.name.split(' ').slice(1).join(' ') : ''),
@@ -104,18 +118,33 @@ export class FubClient {
     transactionType?: 'bba' | 'la' | 'uc';
     agentId?: number;
   } = {}): Promise<FubDeal[]> {
-    const response = await fetch(`${this.config.baseUrl}/deals/?userId=${filters.agentId}`, {
-      method: 'GET',
-      headers: this.getHeaders()
-    });
+    // Get all deals by implementing pagination
+    let allDeals: any[] = [];
+    let offset = 0;
+    const limit = 100;
+    let hasMore = true;
 
-    if (!response.ok) {
-      throw new Error(`FUB API error: ${response.status} ${response.statusText}`);
+    while (hasMore) {
+      const response = await fetch(`${this.config.baseUrl}/deals/?userId=${filters.agentId || ''}&limit=${limit}&offset=${offset}`, {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+
+      if (!response.ok) {
+        throw new Error(`FUB API error: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const deals = data.deals || [];
+      
+      allDeals = allDeals.concat(deals);
+      
+      // Check if we got fewer results than the limit, meaning we've reached the end
+      hasMore = deals.length === limit;
+      offset += limit;
     }
 
-    const data = await response.json();
-    let deals = data.deals || [];
-    return deals;
+    let deals = allDeals;
     
     // Client-side filtering based on conditional logic
     if (filters.buyerOrSeller && filters.transactionType) {
